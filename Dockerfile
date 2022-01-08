@@ -12,6 +12,6 @@ WORKDIR /opt/sonic_exporter
 
 COPY --from=builder /build/target/sonic_exporter .
 
-EXPOSE 9710
+EXPOSE 9893
 ENTRYPOINT ["./sonic_exporter"]
 CMD []
