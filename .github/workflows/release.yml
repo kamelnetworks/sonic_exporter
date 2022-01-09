@@ -1,14 +1,12 @@
-name: ci
+name: Build and Release
 
 on:
   push:
-    branches:
-      - 'main'
     tags:
       - 'v*.*.*'
 
 jobs:
-  docker:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -18,7 +16,7 @@ jobs:
         id: manifest
         run: |
           echo -n "::set-output name=manifest::"
-          cat manifest.json | jq -c .
+          cat manifest.json | sed "s/__VERSION__/${GITHUB_REF##*/v}/" | jq -c .
 
       - name: Compute Docker metadata
         id: meta

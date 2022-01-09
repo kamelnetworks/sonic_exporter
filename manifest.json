@@ -1,7 +1,7 @@
 {
-    "version": "0.0.2",
+    "version": "__VERSION__",
     "package": {
-        "version": "0.0.2",
+        "version": "__VERSION__",
         "depends": [],
         "name": "sonic_exporter",
         "description": "Prometheus exporter for SONiC"
