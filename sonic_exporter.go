@@ -48,10 +48,12 @@ func main() {
 		DisableColors:    true,
 		DisableTimestamp: true,
 	})
+	// SONiC rsyslog format is {container_name}#{binary}
+	tag := "sonic_exporter#/sonic_exporter"
 	// TODO: We should look up this IP or pass it as an argument or something.
 	// In SONiC it seems that where the rsyslog receiver is vary when doing
 	// multi-ASCI platforms.
-	hook, err := lsyslog.NewSyslogHook("udp", "127.0.0.1:514", syslog.LOG_INFO, "")
+	hook, err := lsyslog.NewSyslogHook("udp", "127.0.0.1:514", syslog.LOG_INFO, tag)
 	if err != nil {
 		panic(err)
 	}
