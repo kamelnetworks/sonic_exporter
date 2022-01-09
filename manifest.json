@@ -29,7 +29,7 @@
         "tmpfs": []
     },
     "cli": {
-        "config": "",
+        "config": "cli/config.py",
         "show": "",
         "clear": ""
     }
