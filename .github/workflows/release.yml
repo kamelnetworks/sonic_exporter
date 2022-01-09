@@ -1,9 +1,8 @@
 name: Build and Release
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'
+  release:
+    types: [published]
 
 jobs:
   build:
@@ -16,6 +15,7 @@ jobs:
         id: manifest
         run: |
           echo -n "::set-output name=manifest::"
+          # Assume that we are on a tag named vX.Y.Z
           cat manifest.json | sed "s/__VERSION__/${GITHUB_REF##*/v}/" | jq -c .
 
       - name: Compute Docker metadata
