@@ -13,3 +13,24 @@ sudo sonic-package-manager install \
   --from-repository "ghcr.io/kamelnetworks/sonic_exporter:${version}" \
   --enable
 ```
+
+## Configuration
+
+Configuration is done using the SONiC click system.
+
+Example:
+```
+admin@sonic:~$ sudo config sonic-exporter 
+Usage: config sonic-exporter [OPTIONS] COMMAND [ARGS]...
+
+  Configure Prometheus exporter for SONiC
+
+Options:
+  -h, -?, --help  Show this message and exit.
+
+Commands:
+  port  Set the port that the exporter is listening to.
+  vrf   Set the VRF that the exporter is listening inside.
+admin@sonic:~$ sudo config sonic-exporter port 1234
+admin@sonic:~$ sudo config sonic-exporter vrf VrfTest
+```
