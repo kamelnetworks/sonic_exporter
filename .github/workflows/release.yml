@@ -27,11 +27,6 @@ jobs:
           tags: |
             type=schedule
             type=ref,event=tag
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
             type=sha
           labels: |
             com.azure.sonic.manifest=${{ steps.manifest.outputs.manifest }}
