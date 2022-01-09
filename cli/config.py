@@ -20,11 +20,17 @@ def set_port(db, port):
 @click.argument('vrf', required=True)
 @clicommon.pass_db
 def set_vrf(db, vrf):
-    """Set the VRF that the exporter is listening inside."""
+    """Set the VRF that the exporter is listening inside.
+
+    If VRF is set to 'none' the default VRF is used.
+    """
     ctx = click.get_current_context()
-    if vrf not in db.cfgdb.get_table('VRF'):
+    if vrf != 'none' and vrf not in db.cfgdb.get_table('VRF'):
         ctx.fail('VRF {} does not exist'.format(vrf))
-    db.cfgdb.mod_entry('SONIC_EXPORTER', 'default', {'vrf': vrf})
+    if vrf == 'none':
+        db.cfgdb.mod_entry('SONIC_EXPORTER', 'default', {'vrf': ''})
+    else:
+        db.cfgdb.mod_entry('SONIC_EXPORTER', 'default', {'vrf': vrf})
 
 
 def register(cli):
