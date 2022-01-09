@@ -20,5 +20,8 @@ jobs:
         run: npm install @semantic-release/exec
       - name: Release to GitHub
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # We use a different token here in order to make the release as
+          # a robot github user - that way Github Actions triggers on that
+          # release (which it wouldn't if we used just GITHUB_TOKEN).
+          GITHUB_TOKEN: ${{ secrets.RELEASER_GITHUB_TOKEN }}
         run: npx semantic-release
