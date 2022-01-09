@@ -11,6 +11,7 @@ FROM scratch
 WORKDIR /opt/sonic_exporter
 
 COPY --from=builder /build/target/sonic_exporter .
+COPY cli/*.py /cli/
 
 EXPOSE 9893
 ENTRYPOINT ["./sonic_exporter"]
