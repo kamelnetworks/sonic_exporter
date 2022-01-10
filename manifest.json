@@ -1,5 +1,5 @@
 {
-    "version": "__VERSION__",
+    "version": "1.0.0",
     "package": {
         "version": "__VERSION__",
         "depends": [],
