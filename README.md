@@ -1,6 +1,11 @@
 # sonic_exporter
 Prometheus exporter for the SONiC NOS.
 
+The exporter acts as two exporters in one:
+
+ * Data plane: Exposes metrics based on the SONiC State Database
+ * Control plane: Implements [`node_exporter`](https://github.com/prometheus/node_exporter/) tuned to work well with SONiC.
+
 ## Installation using `sonic-package-manager`
 
 Installation using `sonic-package-manager` requires SONiC 202106 or later.

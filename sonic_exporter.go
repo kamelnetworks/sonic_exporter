@@ -12,8 +12,12 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/prometheus/client_golang/prometheus"
+	promcollectors "github.com/prometheus/client_golang/prometheus/collectors"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	lsyslog "github.com/sirupsen/logrus/hooks/syslog"
@@ -22,6 +26,13 @@ import (
 var (
 	Version = "(devel)"
 	GitHash = "(no hash)"
+
+	exporterInfoMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "sonic_exporter_build_info",
+		Help: "This info metric contains build information for about the exporter",
+	}, []string{
+		"exporter_version", "exporter_revision", "go_version",
+		"lib_prometheus_version", "lib_node_version"})
 )
 
 const (
@@ -31,14 +42,22 @@ const (
 )
 
 type BuildInfo struct {
-	version   string
-	gitHash   string
-	goVersion string
+	version        string
+	gitHash        string
+	goVersion      string
+	promLibVersion string
+	nodeLibVersion string
+}
+
+type ExporterConfig struct {
+	Port int
+	VRF  string
 }
 
 func getBuildInfo() BuildInfo {
+	info, ok := debug.ReadBuildInfo()
 	// don't overwrite the version if it was set by -ldflags=-X
-	if info, ok := debug.ReadBuildInfo(); ok && Version == "(devel)" {
+	if ok && Version == "(devel)" {
 		mod := &info.Main
 		if mod.Replace != nil {
 			mod = mod.Replace
@@ -48,10 +67,29 @@ func getBuildInfo() BuildInfo {
 	// remove leading `v`
 	massagedVersion := strings.TrimPrefix(Version, "v")
 	bi := BuildInfo{
-		version:   massagedVersion,
-		gitHash:   GitHash,
-		goVersion: runtime.Version(),
+		version:        massagedVersion,
+		gitHash:        GitHash,
+		goVersion:      runtime.Version(),
+		promLibVersion: "(unknown)",
+		nodeLibVersion: "(unknown)",
 	}
+	if ok {
+		for _, d := range info.Deps {
+			if d.Path == "github.com/prometheus/client_golang" {
+				bi.promLibVersion = d.Version
+			}
+			if d.Path == "github.com/prometheus/node_exporter" {
+				bi.nodeLibVersion = d.Version
+			}
+		}
+	}
+	exporterInfoMetric.With(prometheus.Labels{
+		"exporter_version":       bi.version,
+		"exporter_revision":      bi.gitHash,
+		"go_version":             bi.goVersion,
+		"lib_prometheus_version": bi.promLibVersion,
+		"lib_node_version":       bi.nodeLibVersion,
+	}).Set(1)
 	return bi
 }
 
@@ -74,28 +112,18 @@ func attachToVRF(vrf string) func(string, string, syscall.RawConn) error {
 	}
 }
 
-func main() {
-	bi := getBuildInfo()
-	log := logrus.New()
-	log.SetFormatter(&logrus.TextFormatter{
-		DisableColors:    true,
-		DisableTimestamp: true,
-	})
-	// SONiC rsyslog format is {container_name}#{binary}
-	tag := "sonic_exporter#/sonic_exporter"
-	// TODO: We should look up this IP or pass it as an argument or something.
-	// In SONiC it seems that where the rsyslog receiver is vary when doing
-	// multi-ASCI platforms.
-	hook, err := lsyslog.NewSyslogHook("udp", "127.0.0.1:514", syslog.LOG_INFO, tag)
-	if err != nil {
-		panic(err)
-	}
-	log.Hooks.Add(hook)
+func metricsHandler(w http.ResponseWriter, r *http.Request, log *logrus.Logger, registry *prometheus.Registry) {
+	start := time.Now()
 
-	log.WithFields(logrus.Fields{
-		"version":  bi.version,
-		"git-hash": bi.gitHash,
-	}).Info("Starting up")
+	h := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})
+	h.ServeHTTP(w, r)
+
+	duration := time.Since(start).Seconds()
+	log.Infof("Metrics reporting done, took %.3f seconds", duration)
+}
+
+func loadAndWatchConfig(log *logrus.Logger) *ExporterConfig {
+	ctx := context.Background()
 
 	configdb := redis.NewClient(&redis.Options{
 		Network:  "unix",
@@ -104,7 +132,6 @@ func main() {
 		DB:       RedisDB_Config,
 	})
 
-	ctx := context.Background()
 	cfg, err := configdb.HGetAll(ctx, "SONIC_EXPORTER|default").Result()
 	if err != nil {
 		log.Fatalf("Failed to read configuration from redis: %v", err)
@@ -128,26 +155,85 @@ func main() {
 	if v, found := cfg["vrf"]; found {
 		vrf = v
 	}
+	return &ExporterConfig{
+		Port: int(port),
+		VRF:  vrf,
+	}
+}
+
+func main() {
+	bi := getBuildInfo()
+	log := logrus.New()
+	log.SetFormatter(&logrus.TextFormatter{
+		DisableColors:    true,
+		DisableTimestamp: true,
+	})
+	// Enable this for verbose logging (including node_exporter debug logs)
+	// log.SetLevel(logrus.DebugLevel)
+
+	// SONiC rsyslog format is {container_name}#{binary}
+	tag := "sonic_exporter#/sonic_exporter"
+	// TODO: We should look up this IP or pass it as an argument or something.
+	// In SONiC it seems that where the rsyslog receiver is vary when doing
+	// multi-ASCI platforms.
+	hook, err := lsyslog.NewSyslogHook("udp", "127.0.0.1:514", syslog.LOG_INFO, tag)
+	if err != nil {
+		panic(err)
+	}
+	log.Hooks.Add(hook)
 
 	log.WithFields(logrus.Fields{
-		"port": port,
-		"vrf":  vrf,
+		"exporter-version":       bi.version,
+		"exporter-git-hash":      bi.gitHash,
+		"lib-prometheus-version": bi.promLibVersion,
+		"lib-node-version":       bi.nodeLibVersion,
+	}).Info("Starting up")
+
+	config := loadAndWatchConfig(log)
+
+	log.WithFields(logrus.Fields{
+		"port": config.Port,
+		"vrf":  config.VRF,
 	}).Infof("Configuration loaded")
 
-	listen := fmt.Sprintf(":%d", port)
-	lc := net.ListenConfig{Control: attachToVRF(vrf)}
+	listen := fmt.Sprintf(":%d", config.Port)
+	lc := net.ListenConfig{Control: attachToVRF(config.VRF)}
 	ln, err := lc.Listen(context.Background(), "tcp", listen)
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
 	defer ln.Close()
 
-	http.Handle("/metrics", promhttp.Handler())
+	InitNodeFlags()
+
+	registry := prometheus.NewRegistry()
+	registry.MustRegister(promcollectors.NewProcessCollector(promcollectors.ProcessCollectorOpts{}))
+	registry.MustRegister(promcollectors.NewGoCollector())
+	registry.MustRegister(exporterInfoMetric)
+	nc, err := NewNodeCollector(log)
+	if err != nil {
+		log.Fatalf("Failed to create node collector: %v", err)
+	}
+	registry.MustRegister(nc)
+
+	http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
+		metricsHandler(w, r, log, registry)
+	})
 	go func() {
 		if err := http.Serve(ln, nil); err != nil {
 			log.Fatalf("Unable to serve: %v", err)
 		}
 	}()
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`<html>
+		<head><title>SONiC Exporter</title></head>
+		<body>
+		<h1>SONiC Exporter</h1>
+		<p><a href="/metrics">Metrics</a></p>
+		</body>
+		</html>`))
+	})
 
 	log.Infof("SONiC Prometheus exporter running")
 	select {}
