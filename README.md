@@ -23,7 +23,7 @@ sudo sonic-package-manager install \
 not work if you want to download the container in the management VRF. For that case we
 release container tarballs that can be imported instead.
 
-```
+```shell
 # Fetch the latest version
 version=$(curl -s https://api.github.com/repos/kamelnetworks/sonic_exporter/releases | jq '.[0].name' -r)
 
