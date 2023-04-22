@@ -11,3 +11,8 @@ LDFLAGS = -ldflags "-X main.Version=${VERSION} -X main.GitHash=${GIT_HASH} -X ma
 build:
 	CGO_ENABLED=0 go build ${LDFLAGS} -v -o target/sonic_exporter .
 
+.PHONY: build-container-tarball
+build-container-tarball:
+	docker build -t sonic_exporter .
+	docker image save sonic_exporter -o target/sonic_exporter.tar
+	gzip target/sonic_exporter.tar
