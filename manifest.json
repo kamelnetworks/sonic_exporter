@@ -25,7 +25,11 @@
     },
     "container": {
         "privileged": false,
-        "volumes": [],
+        "volumes": [
+          "/run/systemd:/run/systemd:rw",
+          "/run/udev/data:/run/udev/data:ro",
+          "/sys:/sys:ro"
+        ],
         "tmpfs": []
     },
     "cli": {

@@ -204,7 +204,9 @@ func main() {
 	}
 	defer ln.Close()
 
-	InitNodeFlags()
+	if err := InitNodeFlags(); err != nil {
+		log.Fatalf("Failed to initialize node collector flags: %v", err)
+	}
 
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(promcollectors.NewProcessCollector(promcollectors.ProcessCollectorOpts{}))

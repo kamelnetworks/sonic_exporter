@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"sync"
 
+	promflag "github.com/alecthomas/kingpin/v2"
 	promlog "github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/node_exporter/collector"
 	"github.com/sirupsen/logrus"
-	promflag "gopkg.in/alecthomas/kingpin.v2"
 )
 
 type PromLogAdapter struct {
@@ -75,8 +75,10 @@ type CollectorFactory func(logger promlog.Logger) (collector.Collector, error)
 
 func NewNodeCollector(log *logrus.Logger) (*NodeCollector, error) {
 	promlogger := &PromLogAdapter{log}
-	nc := &NodeCollector{}
-	nc.Collectors = map[string]Collector{}
+	nc := &NodeCollector{
+		Collectors: map[string]Collector{},
+		log:        log,
+	}
 
 	for _, c := range []struct {
 		cf   CollectorFactory
@@ -90,14 +92,15 @@ func NewNodeCollector(log *logrus.Logger) (*NodeCollector, error) {
 		{collector.NewHwMonCollector, "hwmon"},
 		{collector.NewLoadavgCollector, "loadavg"},
 		{collector.NewMeminfoCollector, "meminfo"},
-		{collector.NewNetClassCollector, "netclass"},
+		// TODO: netclass seems to fail:
+		// level=error msg="netclass failed: could not get net class info: failed to read file \"/sys/class/net/Ethernet0/carrier\": invalid argument"
+		//{collector.NewNetClassCollector, "netclass"},
 		{collector.NewNetDevCollector, "netdev"},
 		{collector.NewNetStatCollector, "netstat"},
 		{collector.NewStatCollector, "stat"},
 		{collector.NewTimeCollector, "time"},
 		{collector.NewvmStatCollector, "vmstat"},
 		{collector.NewSystemdCollector, "systemd"},
-		{collector.NewNtpCollector, "ntp"},
 	} {
 		cc, err := c.cf(promlogger)
 		if err != nil {
@@ -108,9 +111,12 @@ func NewNodeCollector(log *logrus.Logger) (*NodeCollector, error) {
 	return nc, nil
 }
 
-func InitNodeFlags() {
-	// Again, since node_exporter is not a library as such this is a pretty ugly
+func InitNodeFlags() error {
+	// Since node_exporter is not a library as such this is a pretty ugly
 	// way to set it up as a library. I expect this to break from time to time
-	// when the node library is upgrade.
-	promflag.CommandLine.Parse([]string{})
+	// when the node library is upgraded.
+	_, err := promflag.CommandLine.Parse([]string{
+		"--path.procfs", "/proc",
+	})
+	return err
 }

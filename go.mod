@@ -8,7 +8,7 @@ require (
 	github.com/prometheus/client_golang v1.15.0
 	github.com/prometheus/node_exporter v1.5.1-0.20230407113533-b87c6a8826d4
 	github.com/sirupsen/logrus v1.9.0
-	gopkg.in/alecthomas/kingpin.v2 v2.2.6
+	github.com/alecthomas/kingpin/v2 v2.3.2
 )
 
 require (
