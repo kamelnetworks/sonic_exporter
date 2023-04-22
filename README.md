@@ -25,7 +25,7 @@ Configuration is done using the SONiC click system.
 
 Example:
 ```
-admin@sonic:~$ sudo config sonic-exporter 
+admin@sonic:~$ sudo config sonic-exporter
 Usage: config sonic-exporter [OPTIONS] COMMAND [ARGS]...
 
   Configure Prometheus exporter for SONiC
