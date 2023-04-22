@@ -31,8 +31,8 @@ curl -L "https://github.com/kamelnetworks/sonic_exporter/releases/download/${ver
   -o "sonic_exporter-${version}.tar.gz"
 
 sudo sonic-package-manager install \
-  --from-tarball "sonic_exporter-${version}.tar.gz" \
-  --enable
+  --from-tarball "sonic_exporter-${version}.tar.gz"
+sudo config feature state sonic_exporter enabled
 ```
 
 ## Configuration
