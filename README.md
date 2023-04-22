@@ -19,6 +19,19 @@ sudo sonic-package-manager install \
   --enable
 ```
 
+**NOTE**: Due to https://github.com/sonic-net/sonic-buildimage/issues/14805 the above does
+not work if you want to download the container in the management VRF. For that case we
+release container tarballs that can be imported instead.
+
+```
+# Fetch the latest version
+version=$(curl -s https://api.github.com/repos/kamelnetworks/sonic_exporter/releases | jq '.[0].name' -r)
+# TODO UPDATE
+sudo sonic-package-manager install \
+  --from-repository "ghcr.io/kamelnetworks/sonic_exporter:${version}" \
+  --enable
+```
+
 ## Configuration
 
 Configuration is done using the SONiC click system.
