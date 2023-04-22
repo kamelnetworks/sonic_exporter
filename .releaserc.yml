@@ -4,4 +4,10 @@ branches:
 plugins:
   - "@semantic-release/commit-analyzer"
   - "@semantic-release/release-notes-generator"
-  - "@semantic-release/github"
+  - - "@semantic-release/exec"
+    - prepareCmd: "make build-container-tarball VERSION=${nextRelease.version}"
+  - - "@semantic-release/github"
+    - assets:
+      - path: "target/sonic_exporter.tar.gz"
+        label: "Container tarball"
+
