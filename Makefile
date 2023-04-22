@@ -14,6 +14,10 @@ build:
 .PHONY: build-container-tarball
 build-container-tarball:
 	mkdir -p target/
-	docker build -t sonic_exporter .
-	docker image save sonic_exporter -o target/sonic_exporter.tar
+	rm -f target/sonic_exporter.tar* || true
+	docker build \
+		-t sonic_exporter:$(VERSION) \
+		--label='com.azure.sonic.manifest=$(shell cat manifest.json | sed "s/__VERSION__/$(subst v,,$(VERSION))/" | jq -c .)' \
+		.
+	docker image save sonic_exporter:$(VERSION) -o target/sonic_exporter.tar
 	gzip target/sonic_exporter.tar
